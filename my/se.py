@@ -70,12 +70,23 @@ class crawler:
         return False
 
     def addlinkref(self, urlFrom, urlTo, linkText):
-        pass
+        words = self.separatewords(linkText)
+        fromid = self.getentryid('urllist', 'url', urlFrom)
+        toid = self.getentryid('urllist', 'url', urlTo)
+        if fromid==toid: return
+        cur = self.con.execute("insert into link(fromid, toid) values (%d, %d)" % (fromid, toid))
+        linkid = cur.lastrowid
+        for word in words:
+            if word in ignorewords: continue
+            wordid = self.getentryid('wordlist', 'word', word)
+            self.con.execute("insert into linkwords(linkid, wordid) values (%d, %d)" % (linkid, wordid))
+
 
     def crawl(self, pages, depth=2):
         for i in range(depth):
             newpages=set()
             for page in pages:
+                print page
                 try:
                     c = urllib2.urlopen(page)
                 except:
@@ -89,7 +100,7 @@ class crawler:
                         url = urljoin(page, link['href'])
                         if url.find("'") != -1: continue
                         url=url.split('#')[0]
-                        if url[0:4] == 'http' and not self.isindexed(url):
+                        if (url[0:4] == 'http' or url[0:5] == 'https') and not self.isindexed(url):
                             newpages.add(url)
                         linkText = self.gettextonly(link)
                         self.addlinkref(page, url, linkText)
@@ -180,8 +191,8 @@ class searcher:
         #weights = [(1.0, self.locationscore(rows))]
         #weights = [(1.0, self.distancescore(rows))]
         #weights = [(1.0, self.inboundlinkscore(rows))]
-        #weights = [(1.0, self.pagerankscore(rows))]
-        weights = [(1.0, self.linktextscore(rows, wordids))]
+        weights = [(1.0, self.pagerankscore(rows))]
+        #weights = [(1.0, self.linktextscore(rows, wordids))]
 
         for (weight, scores) in  weights:
             for url in totalscores:
@@ -269,19 +280,14 @@ class searcher:
 
 
 def main():
-    #pagelist = ['http://www.tistory.com']
+    #pagelist = ['http://freesearch.pe.kr/', 'http://www.netmanias.com/ko/']
     #c = crawler('searchindex.db')
+    #c.createindextables()
+    #c.crawl(pagelist)
     #c.calculatepagerank()
-    #c.crawl(pagelist)
-    #c.createindextables()
-    #s = searcher('searchindex.db')
-    #s.query('tistory main test')
-
-    #c.crawl(pagelist)
-    #c.createindextables()
+    
     s = searcher('searchindex.db')
-    s.query('tistory main test')
-
+    s.query('last')
 
 if __name__ == "__main__":
     main()
